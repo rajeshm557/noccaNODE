@@ -1,0 +1,23 @@
+{
+  "name": "serialapp",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node ./bin/www"
+  },
+  "dependencies": {
+    "body-parser": "~1.17.1",
+    "cookie-parser": "~1.4.3",
+    "debug": "~2.6.3",
+    "digimesh": "^1.3.1",
+    "ejs": "^2.5.6",
+    "express": "~4.15.2",
+    "html": "^1.0.0",
+    "morgan": "~1.8.1",
+    "serialport": "^5.0.0-beta7",
+    "serve-favicon": "~2.4.2",
+    "stylus": "^0.54.5",
+    "util": "^0.10.3",
+    "xbee-rx": "^3.0.1"
+  }
+}
