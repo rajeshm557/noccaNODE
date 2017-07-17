@@ -5,11 +5,30 @@
 		var xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
-			   // Typical action to be performed when the document is ready:
-			   document.getElementById("status").innerHTML = xhttp.responseText;
+				// Typical action to be performed when the document is ready:
+				document.getElementById("status").innerHTML = xhttp.responseText;
+				if(cmd == 'on'){
+					document.getElementById(cmd).className = 'disabled';
+					document.getElementById('off').className = 'off';
+				}else if(cmd == 'off'){
+					document.getElementById(cmd).className = 'disabled';
+					document.getElementById('on').className = 'on';  
+				}else if(cmd == 'emgStop'){
+					if(document.getElementById('emgStop').className == 'reset'){
+						document.getElementById('emgStop').className = 'emergency'; 
+						document.getElementById('emgStop').innerHTML = 'Emergency Stop';
+					}else{	 
+						document.getElementById('emgStop').className = 'reset'; 
+						document.getElementById('emgStop').innerHTML = 'Cleck to reset';
+					}	
+				}		
 			}
 		};
-		xhttp.open("POST", "/" + cmd, false);
+		if(cmd == 'emgStop' && document.getElementById('emgStop').className == 'reset'){
+			xhttp.open("POST", "/reset", true);
+		}else {	
+			xhttp.open("POST", "/" + cmd, true);
+		}	
 		xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
 		xhttp.setRequestHeader("Content-length", "bot=1".length);
 		xhttp.setRequestHeader("Connection", "close");
@@ -52,8 +71,8 @@
         <hr>
 
         <div style="width: 100%;">
-            <button id="on" onclick="sendCmd('on')" type="button">ON</button>
-            <button id="off" onclick="sendCmd('off')" type="button">OFF</button>
+            <button id="on" onclick="sendCmd('on')" type="button" class="on">ON</button>
+            <button id="off" onclick="sendCmd('off')" type="button" class="off">OFF</button>
         </div>
         <h2>Status</h2>
         <div style="width: 100%; height: 200px; margin-bottom: 30px;"> 

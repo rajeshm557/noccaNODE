@@ -1,10 +1,28 @@
 var express = require('express');
-var router = express.Router();
+var LatLon = require('geodesy').LatLonEllipsoidal;
+var vec3D = require('geodesy').Vector3d;
 var util = require('util');
 var SerialPort = require('serialport');
+
+var router = express.Router();
 var port = new SerialPort('/dev/ttyUSB0', {
   baudRate: 115200
 });
+
+const macAddr = ["000000000000FFFF", "0013A2004156586B"];
+
+const rows = {
+	A : { p1:[0, 0], p2:[0, 180]},
+	B : { p1:[34, 56], p2:[36, 50]}
+};
+
+var rowAp1 = (new LatLon(rows.A.p1[0], rows.A.p1[1])).toCartesian();
+var rowAp2 = (new LatLon(rows.A.p2[0], rows.A.p2[1])).toCartesian();
+var pt = (new LatLon(0, 1)).toCartesian();
+
+var dist = pt.minus(rowAp1).cross(pt.minus(rowAp2)).length()/rowAp1.minus(rowAp2).length();
+
+console.log(util.inspect(dist));
 
 var packetStarted = false;
 var packetInfo = {
@@ -16,8 +34,6 @@ var packetInfo = {
 };
 var newFrame144 = false;
 var newFrame151 = false;
-
-//console.log(util.inspect(packetInfo));
 
 port.on('readable', function () {
 	var tStamp = Date.now();
@@ -62,7 +78,6 @@ port.on('readable', function () {
 	console.log(packetInfo);
 });
 
-var macAddr = ["000000000000FFFF", "0013A2004156586B"];
 var macSum = [];
 
 for (var i = 0; i < macAddr.length; i++){
@@ -75,107 +90,27 @@ router.get('/', function(req, res, next) {
 });
 
 router.post('/on', function(req, res) {
-	var b = '7E00101701' + macAddr[req.body['bot']] + 'FFFE02443604';
-	var sum = 0x17 + 0x01 + macSum[req.body['bot']] + 0xFF + 0xFE + 0x02 + 0x44 + 0x36 + 0x04;
-	sum = 0xFF - (sum & 0xFF);
-	sum = sum.toString(16);
-	b += sum;
-	port.write(b, 'hex', function(err) {
-		if (err) {
-			res.send('Error on write: ', err.message);
-			return console.log('Error on write: ', err.message);
-		}
-		console.log('message written');
-		newFrame151 = false;
-		setTimeout(function() {
-			port.drain(function(errDrain){
-					if (errDrain) {
-						return console.log('Error on drain: ', errDrain.message);
-					}
-					console.log('Message drained.');
-					var t0 = Date.now();
-					var timer = setInterval(function(){
-						if((Date.now() - t0) > 2000){
-							clearInterval(timer);
-							res.send('no confirmation received from robot');
-						}else if(newFrame151){
-							newFrame151 = false;
-							clearInterval(timer);
-							res.send(packetInfo);
-						}	
-					}, 5);		
-				});
-		}, 3);
+	sendRemoteATcmd(req.body['bot'], '36', '04', function(data){
+		res.send(data);
 	});
 });
 
 router.post('/off', function(req, res) {
-	var b = '7E00101701' + macAddr[req.body['bot']] + 'FFFE02443605';
-	var sum = 0x17 + 0x01 + macSum[req.body['bot']] + 0xFF + 0xFE + 0x02 + 0x44 + 0x36 + 0x05;
-	sum = 0xFF - (sum & 0xFF);
-	sum = sum.toString(16);
-	b += sum;
-	port.write(b, 'hex', function(err) {
-		if (err) {
-			res.send('Error on write: ', err.message);
-			return console.log('Error on write: ', err.message);
-		}
-		console.log('message written');
-		newFrame151 = false;
-		setTimeout(function() {
-			port.drain(function(errDrain){
-					if (errDrain) {
-						return console.log('Error on drain: ', errDrain.message);
-					}
-					console.log('Message drained.');
-					var t0 = Date.now();
-					var timer = setInterval(function(){
-						if((Date.now() - t0) > 2000){
-							clearInterval(timer);
-							res.send('no confirmation received from robot');
-						}else if(newFrame151){
-							newFrame151 = false;
-							clearInterval(timer);
-							res.send(packetInfo);
-						}	
-					}, 5);	
-				});
-		}, 3);
+	sendRemoteATcmd(req.body['bot'], '36', '05', function(data){
+		res.send(data);
 	});
 });
 
 router.post('/emgStop', function(req, res) {
-	var b = '7E00101701' + macAddr[req.body['bot']] + 'FFFE02443305';
-	var sum = 0x17 + 0x01 + macSum[req.body['bot']] + 0xFF + 0xFE + 0x02 + 0x44 + 0x33 + 0x05;
-	sum = 0xFF - (sum & 0xFF);
-	sum = sum.toString(16);
-	b += sum;
-	port.write(b, 'hex', function(err) {
-		if (err) {
-			res.send('Error on write: ', err.message);
-			return console.log('Error on write: ', err.message);
-		}
-		console.log('message written');
-		newFrame151 = false;
-		setTimeout(function() {
-			port.drain(function(errDrain){
-					if (errDrain) {
-						return console.log('Error on drain: ', errDrain.message);
-					}
-					console.log('Message drained.');
-					var t0 = Date.now();
-					var timer = setInterval(function(){
-						if((Date.now() - t0) > 2000){
-							clearInterval(timer);
-							res.send('no confirmation received from robot');
-						}else if(newFrame151){
-							newFrame151 = false;
-							clearInterval(timer);
-							res.send(packetInfo);
-						}	
-					}, 5);	
-				});
-		}, 3);
+	sendRemoteATcmd(req.body['bot'], '33', '05', function(data){
+		res.send(data);
+	});
+});
+router.post('/reset', function(req, res) {
+	sendRemoteATcmd(req.body['bot'], '33', '04', function(data){
+		sendRemoteATcmd(req.body['bot'], '36', '05', function(data){
+			res.send(data);
+		});	
 	});
 });
 
@@ -193,11 +128,40 @@ router.post('/readSerial', function(req, res) {
 	}, 5);	
 });	
 
-function closeSerial(err){
-	if (err) {
-		return console.log('Error on close: ', err.message);
-	}
-	console.log('Port closed.');
+function sendRemoteATcmd(botID, pinNo, atr, callBack){
+	var b = '7E00101701' + macAddr[botID] + 'FFFE0244' + pinNo + atr;
+	var sum = 0x17 + 0x01 + macSum[botID] + 0xFF + 0xFE + 0x02 + 0x44 + parseInt(pinNo, 16) + parseInt(atr, 16);
+	sum = 0xFF - (sum & 0xFF);
+	sum = sum.toString(16);
+	b += sum;
+	port.write(b, 'hex', function(err) {
+		if (err) {
+			console.log('Error on write: ', err.message);
+			callBack('Error on write: ', err.message);
+		}else {
+			console.log('message written');
+			newFrame151 = false;
+			setTimeout(function() {
+				port.drain(function(errDrain){
+						if (errDrain) {
+							return console.log('Error on drain: ', errDrain.message);
+						}
+						console.log('Message drained.');
+						var t0 = Date.now();
+						var timer = setInterval(function(){
+							if((Date.now() - t0) > 2000){
+								clearInterval(timer);
+								callBack('no confirmation received from robot');
+							}else if(newFrame151){
+								newFrame151 = false;
+								clearInterval(timer);
+								callBack(packetInfo);
+							}	
+						}, 5);	
+					});
+			}, 3);
+		}	
+	});
 }	
 
 function macHex(str){

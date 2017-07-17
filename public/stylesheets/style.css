@@ -109,16 +109,23 @@ button.emergency{
     margin-right: 20px;
     width: 40%;
 }
-#on{
+button.reset{
+    background-color: green;
+    height: 100%;
+    float: right;
+    margin-right: 20px;
+    width: 40%;
+}
+button.on{
     width: 100px;
     margin-left: 0px;
 }
-#off{
+button.off{
     background-color: red;
     width: 100px;
     margin-left: 0px;
 }
-#disabled{
+button.disabled{
     box-shadow: none;
     cursor: not-allowed;
     background-color: #666666;
