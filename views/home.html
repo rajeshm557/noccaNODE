@@ -41,14 +41,19 @@
 			if (this.readyState == 4 && this.status == 200) {
 			   // Typical action to be performed when the document is ready:
 			   document.getElementById(str).innerHTML = xhttp.responseText;
-			   setTimeout(readSerial, 250, str);
+			   setTimeout(readSerial, 500, str);
 			}
 		};
 		
 		xhttp.open("POST", "/readSerial", true);
-		xhttp.send();
+		xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+		xhttp.setRequestHeader("Content-length", ("cmd="+str).length);
+		xhttp.setRequestHeader("Connection", "close");
+		xhttp.send("cmd="+str);
 	}	
-	setTimeout(readSerial, 250, "gps");
+	setTimeout(readSerial, 300, "gps");
+	setTimeout(readSerial, 300, "temp");
+	setTimeout(readSerial, 300, "spd");
 	</script>
     <head>
         <head>
@@ -94,8 +99,8 @@
                 <textarea wrap="hard" readonly="" id="batt">batt</textarea>
             </div>    
             <div class="col" style="width: 24%; height: 100%;">
-                <label class="home" for="dist">Encoder Data</label>
-                <textarea wrap="hard" readonly="" id="dist">dist</textarea>
+                <label class="home" for="spd">Encoder Data</label>
+                <textarea wrap="hard" readonly="" id="spd">dist</textarea>
             </div>
         </div>    
     </body>

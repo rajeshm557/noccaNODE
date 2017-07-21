@@ -8,21 +8,19 @@ var router = express.Router();
 var port = new SerialPort('/dev/ttyUSB0', {
   baudRate: 115200
 });
+const exp = /(\-|)\d*(\.|\:)\d*/gi;
 
 const macAddr = ["000000000000FFFF", "0013A2004156586B"];
 
 const rows = {
-	A : { p1:[0, 0], p2:[0, 180]},
-	B : { p1:[34, 56], p2:[36, 50]}
+	A : { p1:[0, 0], p2:[0, 90]},
+	B : { p1:[26.50928383954885, 80.26836723083761], p2:[26.50876875396264, 80.26813745487743]}
 };
+const rowName = Object.keys(rows);
 
-var rowAp1 = (new LatLon(rows.A.p1[0], rows.A.p1[1])).toCartesian();
-var rowAp2 = (new LatLon(rows.A.p2[0], rows.A.p2[1])).toCartesian();
-var pt = (new LatLon(0, 1)).toCartesian();
-
-var dist = pt.minus(rowAp1).cross(pt.minus(rowAp2)).length()/rowAp1.minus(rowAp2).length();
-
-console.log(util.inspect(dist));
+findRow(26.50896899195355, 80.26824619619674, function(data) {
+	
+});
 
 var packetStarted = false;
 var packetInfo = {
@@ -30,6 +28,15 @@ var packetInfo = {
 	packetType: 0,
 	macAddr: "",
 	data: "",
+	vars: {
+		lat: 0.00,
+		lon: 0.00,
+		tmpProc: 0.00,
+		tmpPow: 0.00,
+		time: '',
+		spdUp: 0.00,
+		spdDown: 0.00
+	},
 	timestamp: 0
 };
 var newFrame144 = false;
@@ -74,6 +81,15 @@ port.on('readable', function () {
 	}else if(packetInfo.packetType == 144){
 		newFrame144 = true;
 		newFrame151 = false;
+		var match = packetInfo.data.match(exp);
+		var keys = Object.keys(packetInfo.vars);
+		if(match.length == 7){
+			var i = 0;
+			keys.forEach(function(key){
+				packetInfo.vars[key] = parseFloat(match[i]);
+				i++;
+			});	
+		}	
 	}
 	console.log(packetInfo);
 });
@@ -121,11 +137,12 @@ router.post('/readSerial', function(req, res) {
 			clearInterval(timer);
 			res.send('no data received from robot');
 		}else if(newFrame144){
-			newFrame144 = false;
 			clearInterval(timer);
-			res.send(packetInfo);
+			readData(req.body.cmd, function(data){
+				res.send(data);
+			});	
 		}	
-	}, 5);	
+	}, 5);
 });	
 
 function sendRemoteATcmd(botID, pinNo, atr, callBack){
@@ -164,6 +181,41 @@ function sendRemoteATcmd(botID, pinNo, atr, callBack){
 	});
 }	
 
+function readData(cmd, callBack){
+	var res;
+	if(cmd == 'gps'){
+		res = "Latitude: " + packetInfo.vars.lat + "\nLongitude: " + packetInfo.vars.lon;
+	}else if(cmd == 'temp'){
+		res = "Processor Temperature: " + packetInfo.vars.tmpProc + "\nPower Circuit Temperature: " + packetInfo.vars.tmpPow;
+	}else if(cmd == 'batt'){
+		
+	}else if(cmd == 'spd'){
+		res = "Speed of upper wheel: " + packetInfo.vars.spdUp + "\nSpeed of lower wheel: " + packetInfo.vars.spdDown;
+		newFrame144 = false;
+	}	
+	callBack(res);			
+		
+}	
+
+function findRow(lat, lon, callBack){
+	rowName.forEach(function (name) {
+		var rowP1 = (new LatLon(rows[name].p1[0], rows[name].p1[1])).toCartesian();
+		var rowP2 = (new LatLon(rows[name].p2[0], rows[name].p2[1])).toCartesian();
+		var point = (new LatLon(lat, lon)).toCartesian();
+		var sides = [rowP2.minus(rowP1), point.minus(rowP2), rowP1.minus(point)];
+		var normal = sides[1].cross(sides[2]).unit();	
+		var angles = [sides[1].angleTo(sides[0].times(-1), normal), sides[2].angleTo(sides[1].times(-1), normal), sides[0].angleTo(sides[2].times(-1), normal)];
+		var dist;
+		if( angles[0] < Math.PI/2 && angles[2] < Math.PI/2){
+			dist = point.minus(rowP1).cross(point.minus(rowP2)).length()/rowP1.minus(rowP2).length();
+		}
+		if(dist != null && dist < 3){
+			callBack(name);
+			return;
+		}
+	});	
+}	
+
 function macHex(str){
 	var sum = 0;
 	for (var i = 0; i < str.length; i += 2){
@@ -171,5 +223,6 @@ function macHex(str){
 	}	
 	return sum;
 }	
+
 
 module.exports = router;
